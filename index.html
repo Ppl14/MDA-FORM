@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Maharashtra Desha Adventure — Official Customer Trip Registration</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #064e3b 100%); min-height: 100vh; }
@@ -145,6 +146,18 @@
   <script>
     const FIREBASE_DB_URL = "https://mda-office-default-rtdb.asia-southeast1.firebasedatabase.app";
     const WORKSPACE_ID = "tripflow_hq_prod";
+    const DEFAULT_SUPABASE_URL = "";
+    const DEFAULT_SUPABASE_ANON_KEY = "";
+
+    function getCustomerSupabase() {
+      const params = new URLSearchParams(window.location.search);
+      const url = (params.get('sbUrl') || DEFAULT_SUPABASE_URL).trim();
+      const key = (params.get('sbKey') || DEFAULT_SUPABASE_ANON_KEY).trim();
+      if (url && key && window.supabase) {
+        return window.supabase.createClient(url, key);
+      }
+      return null;
+    }
 
     const DEFAULT_TRIPS = [
       {
@@ -328,6 +341,17 @@
     async function loadTripsFromFirebase() {
       const params = new URLSearchParams(window.location.search);
       const preselectedTrip = params.get('trip');
+      const sb = getCustomerSupabase();
+      if (sb) {
+        try {
+          const { data } = await sb.from('tripflow_state').select('*').eq('company_id', WORKSPACE_ID).maybeSingle();
+          if (data?.payload?.trips?.length) {
+            availableTrips = data.payload.trips;
+          }
+          renderTripsDropdown(preselectedTrip);
+          return;
+        } catch (e) {}
+      }
       try {
         const endpoint = [FIREBASE_DB_URL, "tripflow_workspaces", WORKSPACE_ID + ".json"].join("/");
         const res = await fetch(endpoint);
@@ -340,13 +364,21 @@
     }
 
     async function saveOrUpdateBookingInFirebase(bookingObj, isUpdate) {
+      const sb = getCustomerSupabase();
       const endpoint = [FIREBASE_DB_URL, "tripflow_workspaces", WORKSPACE_ID + ".json"].join("/");
       let currentPayload = { trips: availableTrips, bookings: [], reminders: [], leads: [], auditLogs: [] };
-      try {
-        const res = await fetch(endpoint);
-        const data = await res.json();
-        if (data?.payload) currentPayload = data.payload;
-      } catch (e) {}
+      if (sb) {
+        try {
+          const { data } = await sb.from('tripflow_state').select('*').eq('company_id', WORKSPACE_ID).maybeSingle();
+          if (data?.payload) currentPayload = data.payload;
+        } catch (e) {}
+      } else {
+        try {
+          const res = await fetch(endpoint);
+          const data = await res.json();
+          if (data?.payload) currentPayload = data.payload;
+        } catch (e) {}
+      }
 
       if (!Array.isArray(currentPayload.bookings)) currentPayload.bookings = [];
       if (!Array.isArray(currentPayload.reminders)) currentPayload.reminders = [];
@@ -390,15 +422,24 @@
         action: `${isUpdate ? 'Updated' : 'Submitted'} registration ${bookingObj.id} (${bookingObj.pax} Pax)`
       });
 
-      await fetch(endpoint, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      if (sb) {
+        await sb.from('tripflow_state').upsert({
+          company_id: WORKSPACE_ID,
           payload: currentPayload,
           updated_by: bookingObj.customerName + ' (Customer Portal)',
           updated_at: new Date().toISOString()
-        })
-      });
+        });
+      } else {
+        await fetch(endpoint, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            payload: currentPayload,
+            updated_by: bookingObj.customerName + ' (Customer Portal)',
+            updated_at: new Date().toISOString()
+          })
+        });
+      }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
