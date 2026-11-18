@@ -3,138 +3,198 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Maharashtra Desha Adventure — Official Customer Trip Registration</title>
+  <title>Maharashtra Desha Adventure — Public Trip Registration Form</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #064e3b 100%); min-height: 100vh; }
     * { box-sizing: border-box; }
   </style>
 </head>
-<body class="p-3 sm:p-6 flex items-center justify-center">
-  <!-- 100% CUSTOMER-ONLY STANDALONE PORTAL (ZERO COMPANY CRM CODE INSIDE THIS FILE) -->
-  <div class="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden my-4">
-    <!-- Branded Customer Header -->
+<body class="p-3 sm:p-6 flex flex-col items-center justify-start">
+  <!-- INTERACTIVE PREVIEW BAR (Lets you switch between: 1. Customer Booking Form, 2. WhatsApp Msg + Attached PDF, 3. Public Invoice View) -->
+  <div id="customerJourneyPreviewNav" class="hidden max-w-2xl w-full bg-slate-900/90 backdrop-blur-md border border-slate-700 rounded-2xl p-2 mb-3 shadow-xl text-white">
+    <div class="flex items-center justify-between px-2 pb-1.5 mb-1.5 border-b border-slate-800">
+      <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">👁️ Customer Experience Preview (Tap to Switch View)</span>
+      <span class="text-[10px] text-slate-400 font-semibold">Short Links + Direct PDF Attachment</span>
+    </div>
+    <div class="grid grid-cols-3 gap-1.5">
+      <button type="button" onclick="switchCustomerPreviewTab('FORM')" id="prevTabFormBtn" class=" bg-emerald-600 text-white text-[11px] font-extrabold py-2 px-2.5 rounded-xl text-center transition">
+        📋 1. Customer Form
+      </button>
+      <button type="button" onclick="switchCustomerPreviewTab('WA')" id="prevTabWaBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold py-2 px-2.5 rounded-xl text-center transition">
+        💬 2. WhatsApp Msg + PDF
+      </button>
+      <button type="button" onclick="switchCustomerPreviewTab('INV')" id="prevTabInvBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold py-2 px-2.5 rounded-xl text-center transition">
+        🧾 3. Short Invoice Link
+      </button>
+    </div>
+  </div>
+
+  <!-- TAB 1: PUBLIC CUSTOMER BOOKING FORM (NO LOGIN, NO SIGNUP, NO OTP, NO AUTO COSTING) -->
+  <div id="previewSectionForm" class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-1">
     <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-emerald-950 text-white p-5 sm:p-6">
       <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-        Official Customer Registration Portal
+        Public Customer Booking Form • No Login Required
       </span>
-      <h1 class="text-lg sm:text-xl font-extrabold mt-1.5">📋 Maharashtra Desha Adventure</h1>
+      <h1 class="text-lg sm:text-xl font-extrabold mt-1.5">📋 Maharashtra Desha Adventure — Trip Registration</h1>
       <p class="text-xs text-slate-300 mt-1">
-        Fill in your group's traveler names, birthdates (🎂 for your birthday trip coupon!), room sharing preference, pickup location, and advance paid.
+        Fill in your trip details below. Once submitted, your booking is sent to our admin team as a New Submission / Pending for confirmation.
       </p>
     </div>
 
-    <!-- VIEW 1: REGISTRATION / EDIT FORM -->
     <form id="customerRegForm" class="p-4 sm:p-6 space-y-4">
-      <div id="editingNoticeBanner" class="hidden bg-amber-50 border border-amber-300 text-amber-900 rounded-2xl p-3 text-xs font-bold flex items-center justify-between">
-        <span>✏️ Editing your submitted registration (<span id="editingBookingIdLabel"></span>)</span>
+      <div id="editingNoticeBanner" class="hidden bg-amber-50 border border-amber-300 text-amber-900 rounded-2xl p-3 text-xs font-bold">
+        <span>✏️ Editing your saved registration (<span id="editingBookingIdLabel"></span>)</span>
       </div>
 
-      <!-- 1. Select Trip & Pax Count (No Package Cost Shown!) -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-        <div class="sm:col-span-2">
-          <label class="block text-xs font-extrabold text-slate-800 mb-1">1. Select Your Trip Batch *</label>
-          <select id="custTripSelect" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs sm:text-sm font-extrabold text-slate-900"></select>
-          <div id="custTripMeta" class="text-[11px] text-emerald-700 font-bold mt-1"></div>
+      <!-- STEP 1: TRIP (PRE-SELECTED FROM LINK), DEPARTURE DATE & NUMBER OF TRAVELLERS -->
+      <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-extrabold text-slate-800 mb-1">1. Trip *</label>
+            <select id="custTripNameSelect" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs sm:text-sm font-extrabold text-slate-900"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-extrabold text-slate-800 mb-1">2. Departure Date *</label>
+            <select id="custTripDateSelect" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs sm:text-sm font-extrabold text-indigo-900"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-extrabold text-slate-800 mb-1">3. No. of Travellers *</label>
+            <input id="custPaxInput" type="number" min="1" max="20" value="1" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs sm:text-sm font-extrabold text-indigo-950" />
+          </div>
+        </div>
+        <div id="custTripMeta" class="text-[11px] text-emerald-700 font-bold"></div>
+      </div>
+
+      <!-- STEP 2: SHARING, BOOKING CITY, PHONE (MANDATORY) & EMAIL (OPTIONAL) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-extrabold text-slate-800 mb-1">🛏️ Room Sharing (Double / Triple / Quad) *</label>
+          <select id="custSharingSelect" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-extrabold text-slate-900">
+            <option value="Double Sharing">Double Sharing</option>
+            <option value="Triple Sharing">Triple Sharing</option>
+            <option value="Quad Sharing" selected>Quad Sharing</option>
+          </select>
         </div>
         <div>
-          <label class="block text-xs font-extrabold text-slate-800 mb-1">2. No. of Travelers *</label>
-          <input id="custPaxInput" type="number" min="1" max="20" value="1" required class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-extrabold text-indigo-900" />
+          <label class="block text-xs font-extrabold text-slate-800 mb-1">🏙️ Booking City (Your City) *</label>
+          <input id="custBookingCityInput" type="text" required placeholder="e.g. Mumbai / Pune / Thane" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-extrabold text-slate-900" />
+        </div>
+        <div>
+          <label class="block text-xs font-extrabold text-slate-800 mb-1">📞 Phone Number (Mandatory) *</label>
+          <input id="custPhoneInput" type="tel" required placeholder="10-digit WhatsApp Mobile No. *" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-extrabold text-slate-900" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">📧 Email ID (Optional)</label>
+          <input id="custEmailInput" type="email" placeholder="yourname@gmail.com" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-semibold text-slate-900" />
         </div>
       </div>
 
-      <!-- 2. Traveler Full Names & Birthdates (Blank, No Pre-Filled Names) -->
+      <!-- STEP 3: PER TRAVELLER DETAILS (NAME, AGE, GENDER, DOB + OPTIONAL "DIFFERENT CITY" TOGGLE) -->
       <div class="bg-indigo-50/60 border border-indigo-200 rounded-2xl p-3.5 space-y-2.5">
         <div class="flex items-center justify-between gap-2">
           <div>
-            <span class="text-xs font-extrabold text-indigo-950">👤 Full Name & Birthdate (🎂) of All Travelers *</span>
-            <p class="text-[11px] text-indigo-700">Row #1 is the Primary Booker. Birthdates unlock your Birthday Discount Coupon for your next trip!</p>
+            <span class="text-xs font-extrabold text-indigo-950">👤 Per-Traveller Details (Name, Age, Gender, DOB &amp; Optional City) *</span>
+            <p class="text-[11px] text-indigo-700">Each traveller inherits the Booking City unless "Different city" is toggled on.</p>
           </div>
           <button type="button" id="custAddPersonBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-extrabold px-2.5 py-1.5 rounded-xl shrink-0">
-            + Add Person
+            + Add Traveller
           </button>
         </div>
-        <div id="custTravelersList" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+        <div id="custTravelersList" class="space-y-2.5 max-h-72 overflow-y-auto pr-1"></div>
       </div>
 
-      <!-- 3. Room Sharing, Meal Pref (No Jain!) & Trip-Specific Pickup Location Dropdown + Custom Option -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">🛏️ Room Sharing *</label>
-          <select id="custSharingSelect" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-extrabold text-slate-900">
-            <option value="4-Sharing (Quad)">Quad Sharing (4 in 1 Room)</option>
-            <option value="3-Sharing (Triple)">Triple Sharing (3 in 1 Room)</option>
-            <option value="2-Sharing (Double)">Double / Couple Sharing (2 in 1 Room)</option>
-          </select>
+      <!-- STEP 4: TRAVEL MODE (SHOWN ONLY FOR TRAIN / FLIGHT TRIPS; HIDDEN FOR BUS-ONLY TRIPS) -->
+      <div id="custTravelModeWrapper" class="bg-teal-50/70 border border-teal-200 rounded-2xl p-3.5 space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-extrabold text-teal-950 mb-1">🚆✈️ Travel Mode *</label>
+            <select id="custTravelModeSelect" class="w-full rounded-xl border border-teal-300 bg-white px-3 py-2.5 text-xs font-extrabold text-slate-900">
+              <option value="TRAIN">🚆 Train</option>
+              <option value="FLIGHT">✈️ Flight (Reach Tour Starting Place Directly)</option>
+            </select>
+          </div>
+
+          <!-- Train Class Selector (Record Only — Never Changes Price) -->
+          <div id="custTrainClassBox">
+            <label class="block text-xs font-extrabold text-teal-950 mb-1">🚆 Train Class (3AC / 2AC / Non-AC) *</label>
+            <select id="custTrainClassSelect" class="w-full rounded-xl border border-teal-300 bg-white px-3 py-2.5 text-xs font-extrabold text-indigo-950">
+              <option value="3AC">3AC</option>
+              <option value="2AC">2AC</option>
+              <option value="Non-AC" selected>Non-AC</option>
+            </select>
+          </div>
         </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">🍴 Meal Preference (Veg / Non-Veg) *</label>
-          <select id="custFoodSelect" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-extrabold text-slate-900">
-            <option value="Veg">Veg</option>
-            <option value="Non-Veg">Non-Veg</option>
-            <option value="Veg & Non-Veg Mix">Veg & Non-Veg Mix</option>
-          </select>
+
+        <!-- Flight Details Box -->
+        <div id="custFlightDetailsBox" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-teal-200/80">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">Flight Number *</label>
+            <input id="custFlightNoInput" type="text" placeholder="e.g. 6E-2045" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">Airport *</label>
+            <input id="custFlightAirportInput" type="text" placeholder="e.g. Cochin / Goa / Chandigarh" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">Arrival Time *</label>
+            <input id="custFlightTimeInput" type="text" placeholder="e.g. 11:30 AM" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">Airport Pick-Up? *</label>
+            <select id="custAirportPickupSelect" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-extrabold text-indigo-900">
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      <!-- Trip-Specific Pickup Point Selector + Custom Input -->
-      <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
-        <label class="block text-xs font-extrabold text-slate-800">📍 Select Pickup Location / Boarding Point *</label>
-        <select id="custPickupSelect" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-extrabold text-slate-900"></select>
-        <input id="custBoardingInput" type="text" value="" placeholder="Type your custom pickup city / stop (e.g. Mumbai Borivali / Pune Wakad)" class="hidden w-full rounded-xl border border-indigo-300 bg-white px-3 py-2.5 text-xs font-bold text-slate-900" />
-      </div>
-
-      <!-- 4. Contact Mobile & Email -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">📞 Mobile No. (Primary / Alternate) *</label>
-          <input id="custPhoneInput" type="text" value="" required placeholder="Enter 10-digit WhatsApp Mobile No." class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-extrabold text-slate-900" />
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">📧 Email ID</label>
-          <input id="custEmailInput" type="email" value="" placeholder="Enter your email address" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-semibold text-slate-900" />
-        </div>
-      </div>
-
-      <!-- 5. Advance Paid & Payment Mode ONLY (No Package Cost or Remaining Date Shown!) -->
+      <!-- STEP 5: OPTIONAL ADVANCE PAID -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-emerald-50/70 p-3.5 rounded-2xl border border-emerald-200">
         <div>
-          <label class="block text-xs font-extrabold text-emerald-950 mb-1">💳 Advance Amount Paid (₹) *</label>
-          <input id="custAdvanceInput" type="number" min="0" value="" required placeholder="Enter advance paid (e.g. 12000)" class="w-full rounded-xl border border-emerald-400 bg-white px-3 py-2 text-sm font-extrabold text-emerald-800" />
+          <label class="block text-xs font-extrabold text-emerald-950 mb-1">💳 Advance Paid (₹) (Optional)</label>
+          <input id="custAdvanceInput" type="number" min="0" value="" placeholder="Enter advance paid if any" class="w-full rounded-xl border border-emerald-400 bg-white px-3 py-2 text-sm font-extrabold text-emerald-800" />
         </div>
         <div>
-          <label class="block text-xs font-extrabold text-emerald-950 mb-1">Payment Mode / App</label>
+          <label class="block text-xs font-extrabold text-emerald-950 mb-1">Payment Mode</label>
           <select id="custPayModeSelect" class="w-full rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-bold text-slate-900">
-            <option value="UPI / GPay">UPI / GPay / PhonePe</option>
-            <option value="Bank Transfer">Bank Transfer / NEFT</option>
+            <option value="UPI">UPI</option>
+            <option value="Bank">Bank</option>
             <option value="Cash">Cash</option>
           </select>
         </div>
       </div>
 
-      <div id="custFormErrorBox" class="hidden bg-rose-50 border border-rose-200 text-rose-700 rounded-xl p-3 text-xs font-bold"></div>
+      <div id="custFormStatusBox" class="hidden rounded-xl p-3 text-xs font-bold"></div>
 
-      <button type="submit" id="custSubmitBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-extrabold text-sm py-3.5 px-4 rounded-xl shadow-md transition">
-        ✅ Submit Trip Registration
-      </button>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+        <button type="button" id="custSaveDraftBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs sm:text-sm py-3 px-4 rounded-xl shadow-sm transition">
+          💾 Save Draft / Half-Filled
+        </button>
+        <button type="submit" id="custSubmitBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm py-3 px-4 rounded-xl shadow-md transition">
+          ✅ Submit Registration
+        </button>
+      </div>
     </form>
 
-    <!-- VIEW 2: THANK YOU + EDIT SUBMITTED DETAILS SCREEN (ONLY SEES THEIR OWN SUBMISSION) -->
+    <!-- THANK YOU SCREEN -->
     <div id="custThankYouView" class="hidden p-5 sm:p-7 space-y-5">
       <div class="text-center space-y-2">
         <div class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto text-2xl font-extrabold shadow-xs">✓</div>
-        <span id="tyStatusBadge" class="inline-block px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800">Registration Submitted</span>
-        <h2 class="text-lg sm:text-xl font-extrabold text-slate-900">Thank You! Your Details Are Recorded</h2>
-        <p class="text-xs text-slate-500">Below is a summary of your submitted registration. If you made any mistake, tap <strong>"✏️ Edit My Submitted Details"</strong> below to update it.</p>
+        <span id="tyStatusBadge" class="inline-block px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-100 text-amber-800">New Submission / Pending Confirmation</span>
+        <h2 class="text-lg sm:text-xl font-extrabold text-slate-900">Thank You! Your Booking Submission Is Received</h2>
+        <p class="text-xs text-slate-500">Our admin team will add the package costing and send your official confirmation &amp; invoice on WhatsApp.</p>
       </div>
 
-      <div id="tyDetailsCard" class="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2.5 text-xs text-slate-800"></div>
+      <div id="tyDetailsCard" class="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs text-slate-800"></div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
         <button type="button" id="editSubmittedDetailsBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs py-3 px-4 rounded-xl shadow-xs transition">
-          ✏️ Edit My Submitted Details
+          ✏️ Edit My Details
         </button>
         <button type="button" id="registerNewGroupBtn" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-3 px-4 rounded-xl border border-slate-300 transition">
           + Submit Another Registration
@@ -143,106 +203,259 @@
     </div>
   </div>
 
+  <!-- TAB 2: WHATSAPP MESSAGE PREVIEW (ATTACHED PDF + SHORT LINK) -->
+  <div id="previewSectionWa" class="hidden bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-1">
+    <div class="bg-[#075E54] text-white p-4 sm:p-5 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-emerald-500/30 border border-emerald-300/40 flex items-center justify-center font-extrabold text-sm">MDA</div>
+        <div>
+          <div class="font-extrabold text-sm sm:text-base">Maharashtra Desha Adventure</div>
+          <div class="text-[11px] text-emerald-200">Official Business Account • WhatsApp Confirmation Preview</div>
+        </div>
+      </div>
+      <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-900/60 text-emerald-200 border border-emerald-400/30">After Booking</span>
+    </div>
+
+    <div class="p-4 sm:p-6 bg-[#ECE5DD] space-y-4">
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-medium text-center">
+        💡 You now have <strong>2 ways</strong> to send the invoice on WhatsApp: <strong>1) Attach the PDF file directly</strong> or <strong>2) Send the new short link</strong> (<code>?inv=2040</code>).
+      </div>
+
+      <!-- WhatsApp Chat Bubble with Attached PDF File + Message -->
+      <div class="bg-[#DCF8C6] rounded-2xl rounded-tl-xs p-3.5 shadow-md border border-emerald-300/60 max-w-lg ml-auto space-y-2.5 text-xs text-slate-900">
+        <!-- Attached PDF Card inside WhatsApp Bubble -->
+        <div class="bg-white/90 rounded-xl p-3 border border-emerald-200 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-9 h-9 rounded-lg bg-rose-600 text-white font-extrabold text-[10px] flex items-center justify-center shrink-0">PDF</div>
+            <div class="truncate">
+              <div class="font-extrabold text-slate-900 truncate">Invoice_BK-2040_D_Joseph.pdf</div>
+              <div class="text-[10px] text-slate-500">1 page • Official A4 Invoice • PDF</div>
+            </div>
+          </div>
+          <button type="button" onclick="downloadSampleCustomerPdf()" class="bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-extrabold px-2.5 py-1.5 rounded-lg shrink-0">
+            📥 Download
+          </button>
+        </div>
+
+        <!-- WhatsApp Text Body -->
+        <div class="whitespace-pre-line leading-relaxed text-[12px] text-slate-800 font-medium">✅ <strong>MAHARASHTRA DESHA ADVENTURE — BOOKING CONFIRMATION</strong>
+
+Hi <strong>D Joseph</strong>! Your booking (<strong>BK-2040</strong>) is confirmed.
+
+🗺️ <strong>Trip:</strong> Kerala Backwaters &amp; Munnar Expedition
+📅 <strong>Departure Date:</strong> 2027-01-23
+🛏️ <strong>Sharing:</strong> Quad Sharing (Train - 3AC)
+
+👥 <strong>Travellers (2 Pax):</strong>
+1. D Joseph, Age 65, Male
+2. Johnson Gounder, Age 30, Male
+
+💳 <strong>Advance Paid:</strong> ₹10,000
+💰 <strong>Balance Due:</strong> ₹23,000
+
+📥 <strong>Download PDF Invoice:</strong>
+<a href="javascript:void(0)" onclick="switchCustomerPreviewTab('INV')" class="text-blue-600 underline font-bold break-all">https://mda-office-crm.pages.dev/?inv=2040</a></div>
+        <div class="text-right text-[10px] text-slate-500 font-semibold">7:02 PM ✓✓</div>
+      </div>
+
+      <!-- Action Buttons to Test Both Methods Right Now -->
+      <div class="bg-white rounded-2xl p-4 border border-slate-200 space-y-2.5">
+        <div class="text-xs font-extrabold text-slate-900">Try Both Sending Options Live:</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <button type="button" onclick="shareSampleAttachedPdf()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold py-3 px-4 rounded-xl shadow-xs transition">
+            📎 Option 1: Attach PDF + Send Msg
+          </button>
+          <button type="button" onclick="switchCustomerPreviewTab('INV')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold py-3 px-4 rounded-xl shadow-xs transition">
+            🔗 Option 2: Tap Short Link (?inv=2040)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: CUSTOMER PUBLIC INVOICE VIEW (OPENS FROM SHORT LINK ?inv=2040 WITHOUT LOGIN) -->
+  <div id="previewSectionInv" class="hidden bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-1 p-4 sm:p-6 space-y-4">
+    <div class="bg-slate-900 text-white p-4 rounded-2xl flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <div class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">Maharashtra Desha Adventure — Official Booking Invoice</div>
+        <h3 class="text-lg font-extrabold mt-0.5">#INV-2040</h3>
+        <div class="text-[11px] text-slate-300">Short Link: <code class="text-emerald-300">https://mda-office-crm.pages.dev/?inv=2040</code></div>
+      </div>
+      <div class="text-right space-y-1">
+        <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-amber-500/20 text-amber-300 border border-amber-400/30">BALANCE DUE: ₹23,000</span>
+        <div class="text-[10px] text-slate-400">View-Only • No Login Required</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+      <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
+        <div class="text-[10px] font-extrabold uppercase text-slate-400">Section 1A • Customer Details</div>
+        <div class="font-extrabold text-sm text-slate-900">D Joseph</div>
+        <div class="text-slate-600 font-semibold">Phone: +91 98332 20528</div>
+        <div class="text-indigo-900 font-bold">Booking City: Thane</div>
+        <div class="text-slate-500">Email: gounderjohn97@gmail.com</div>
+      </div>
+      <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
+        <div class="text-[10px] font-extrabold uppercase text-slate-400">Section 1B • Trip &amp; Sharing Details</div>
+        <div class="font-extrabold text-sm text-indigo-950">Kerala Backwaters &amp; Munnar Expedition</div>
+        <div class="text-slate-600">Departure: 2027-01-23 (6 Days / 5 Nights)</div>
+        <div class="text-emerald-800 font-bold">Sharing: Quad Sharing • Train (3AC)</div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-indigo-200 overflow-hidden bg-white">
+      <div class="text-[10px] uppercase font-extrabold text-indigo-900 px-3 py-2 bg-indigo-100/80 border-b border-indigo-200 flex items-center justify-between">
+        <span>Section 2 — Traveller Details (2 Pax)</span>
+        <span>Sharing: Quad Sharing</span>
+      </div>
+      <table class="w-full text-left border-collapse text-xs">
+        <thead>
+          <tr class="bg-slate-100 text-[10px] uppercase font-extrabold text-slate-600 border-b border-slate-200">
+            <th class="py-1.5 px-2.5">#</th>
+            <th class="py-1.5 px-2.5">Traveller Name</th>
+            <th class="py-1.5 px-2.5 text-center">Gender</th>
+            <th class="py-1.5 px-2.5 text-center">Age</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-200">
+          <tr>
+            <td class="py-1.5 px-2.5 font-bold text-slate-500">1</td>
+            <td class="py-1.5 px-2.5 font-extrabold text-slate-900">D Joseph</td>
+            <td class="py-1.5 px-2.5 text-center font-bold text-indigo-800">Male</td>
+            <td class="py-1.5 px-2.5 text-center font-bold text-slate-700">65 yrs</td>
+          </tr>
+          <tr>
+            <td class="py-1.5 px-2.5 font-bold text-slate-500">2</td>
+            <td class="py-1.5 px-2.5 font-extrabold text-slate-900">Johnson Gounder</td>
+            <td class="py-1.5 px-2.5 text-center font-bold text-indigo-800">Male</td>
+            <td class="py-1.5 px-2.5 text-center font-bold text-slate-700">30 yrs</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rounded-xl border border-slate-200 overflow-hidden">
+      <div class="bg-slate-900 text-white px-3 py-2 text-[10px] font-extrabold uppercase">
+        Section 3 — Total, Advance Paid &amp; Balance Due
+      </div>
+      <table class="w-full text-left border-collapse text-xs">
+        <tbody class="divide-y divide-slate-200">
+          <tr class="bg-slate-50">
+            <td class="py-2 px-3 font-extrabold text-slate-900">TOTAL PACKAGE AMOUNT (2 Pax)</td>
+            <td class="py-2 px-3 text-right font-extrabold text-slate-900">₹33,000</td>
+          </tr>
+          <tr class="bg-emerald-50/70">
+            <td class="py-2 px-3 font-extrabold text-emerald-900">ADVANCE PAID (UPI)</td>
+            <td class="py-2 px-3 text-right font-extrabold text-emerald-700">₹10,000</td>
+          </tr>
+          <tr class="bg-rose-50">
+            <td class="py-2.5 px-3 font-extrabold text-rose-900">BALANCE DUE (Pending)</td>
+            <td class="py-2.5 px-3 text-right font-extrabold text-sm text-rose-700">₹23,000</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <button type="button" onclick="downloadSampleCustomerPdf()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-extrabold py-3.5 px-4 rounded-xl shadow-md transition">
+      📥 Download Official PDF Invoice (Invoice_BK-2040_D_Joseph.pdf)
+    </button>
+  </div>
+
   <script>
     const FIREBASE_DB_URL = "https://mda-office-default-rtdb.asia-southeast1.firebasedatabase.app";
     const WORKSPACE_ID = "tripflow_hq_prod";
     const DEFAULT_SUPABASE_URL = "";
     const DEFAULT_SUPABASE_ANON_KEY = "";
 
+    const DEFAULT_TRIPS = [
+      { id: 'TRIP-100', name: 'Konkan Trip', startDate: '2026-11-19', duration: '4 Days / 3 Nights', transportMode: 'BUS_ONLY', active: true },
+      { id: 'TRIP-101', name: 'Konkan Trip', startDate: '2026-12-24', duration: '5 Days / 4 Nights', transportMode: 'BUS_ONLY', active: true },
+      { id: 'TRIP-102', name: 'Kerala Backwaters & Munnar Expedition', startDate: '2026-12-12', duration: '6 Days / 5 Nights', transportMode: 'TRAIN_FLIGHT', active: true },
+      { id: 'TRIP-103', name: 'Manali Kasol Winter Batch', startDate: '2026-11-22', duration: '6 Days / 5 Nights', transportMode: 'TRAIN_FLIGHT', active: true },
+      { id: 'TRIP-104', name: 'Udaipur Kumbhalgarh Royal Heritage', startDate: '2026-12-05', duration: '4 Days / 3 Nights', transportMode: 'BUS_ONLY', active: true }
+    ];
+
+    let availableTrips = [...DEFAULT_TRIPS];
+    let travelers = [{ name: '', age: '', gender: '', dob: '', differentCity: false, city: '', seatNo: '' }];
+    let currentSubmittedId = null;
+
+
+    function switchCustomerPreviewTab(tab) {
+      const f = document.getElementById('previewSectionForm');
+      const w = document.getElementById('previewSectionWa');
+      const i = document.getElementById('previewSectionInv');
+      const bf = document.getElementById('prevTabFormBtn');
+      const bw = document.getElementById('prevTabWaBtn');
+      const bi = document.getElementById('prevTabInvBtn');
+      if (!f || !w || !i) return;
+      f.classList.toggle('hidden', tab !== 'FORM');
+      w.classList.toggle('hidden', tab !== 'WA');
+      i.classList.toggle('hidden', tab !== 'INV');
+      const activeCls = 'bg-emerald-600 text-white text-[11px] font-extrabold py-2 px-2.5 rounded-xl text-center transition';
+      const idleCls = 'bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold py-2 px-2.5 rounded-xl text-center transition';
+      bf.className = tab === 'FORM' ? activeCls : idleCls;
+      bw.className = tab === 'WA' ? activeCls : idleCls;
+      bi.className = tab === 'INV' ? activeCls : idleCls;
+    }
+
+    function buildSampleJsPdf() {
+      if (!(window.jspdf && window.jspdf.jsPDF)) return null;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      doc.setFillColor(15, 23, 42);
+      doc.rect(10, 10, 190, 24, 'F');
+      doc.setTextColor(52, 211, 153);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.text('MAHARASHTRA DESHA ADVENTURE — OFFICIAL BOOKING INVOICE', 14, 17);
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.text('INVOICE #INV-2040', 14, 24.5);
+      doc.setFontSize(8.5);
+      doc.text('Booking Ref: BK-2040  |  Trip: Kerala (23rd Jan 2027)  |  Sharing: Quad Sharing (Train - 3AC)', 14, 30.5);
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(10);
+      doc.text('Customer: D Joseph (2 Pax)   |   Phone: 9833220528   |   Booking City: Thane', 14, 44);
+      doc.setFontSize(9);
+      doc.text('Travellers: 1. D Joseph (Male, 65 yrs)   |   2. Johnson Gounder (Male, 30 yrs)', 14, 52);
+      doc.text('Total Package Amount: Rs. 33,000   |   Advance Paid: Rs. 10,000   |   Balance Due: Rs. 23,000', 14, 60);
+      return doc;
+    }
+
+    function downloadSampleCustomerPdf() {
+      const doc = buildSampleJsPdf();
+      if (doc) doc.save('Invoice_BK-2040_D_Joseph.pdf');
+    }
+
+    async function shareSampleAttachedPdf() {
+      const doc = buildSampleJsPdf();
+      if (!doc) return;
+      const msg = `✅ *MAHARASHTRA DESHA ADVENTURE — BOOKING CONFIRMATION*\n\nHi *D Joseph*! Your booking (*BK-2040*) is confirmed.\n\n🗺️ *Trip:* Kerala Backwaters & Munnar Expedition\n📅 *Departure Date:* 2027-01-23\n🛏️ *Sharing:* Quad Sharing (Train - 3AC)\n\n👥 *Travellers (2 Pax):*\n1. D Joseph, Age 65, Male\n2. Johnson Gounder, Age 30, Male\n\n💳 *Advance Paid:* ₹10,000\n💰 *Balance Due:* ₹23,000\n\n📥 *Download PDF Invoice:*\nhttps://mda-office-crm.pages.dev/?inv=2040`;
+      try {
+        const blob = doc.output('blob');
+        const file = new File([blob], 'Invoice_BK-2040_D_Joseph.pdf', { type: 'application/pdf' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'Invoice_BK-2040_D_Joseph.pdf', text: msg });
+          return;
+        }
+      } catch (e) {}
+      doc.save('Invoice_BK-2040_D_Joseph.pdf');
+      window.open('https://wa.me/919833220528?text=' + encodeURIComponent(msg), '_blank', 'noopener,noreferrer');
+    }
+
     function getCustomerSupabase() {
       const params = new URLSearchParams(window.location.search);
       const url = (params.get('sbUrl') || DEFAULT_SUPABASE_URL).trim();
       const key = (params.get('sbKey') || DEFAULT_SUPABASE_ANON_KEY).trim();
-      if (url && key && window.supabase) {
-        return window.supabase.createClient(url, key);
-      }
+      if (url && key && window.supabase) return window.supabase.createClient(url, key);
       return null;
     }
 
-    const DEFAULT_TRIPS = [
-      {
-        id: 'TRIP-100',
-        name: 'Kokan Coastal Adventure Batch',
-        travelMode: 'Road / Bus',
-        startDate: '2026-12-24',
-        duration: '5 Days / 4 Nights (24/12/26 - 28/12/26)',
-        basePricePerPax: 7500,
-        pickupLocations: [
-          'Mumbai - Borivali National Park',
-          'Mumbai - Andheri (WEH Metro)',
-          'Mumbai - Sion / Chembur',
-          'Navi Mumbai - Vashi Plaza Bus Stop',
-          'Pune - Wakad Chowk',
-          'Pune - Navale Bridge'
-        ]
-      },
-      {
-        id: 'TRIP-101',
-        name: 'Manali Kasol Solang Winter Batch',
-        travelMode: 'Train / Railway',
-        startDate: '2026-11-22',
-        duration: '6 Days / 5 Nights',
-        basePricePerPax: 14500,
-        pickupLocations: [
-          'Mumbai - Bandra Terminus / CSMT',
-          'Mumbai - Kalyan Junction',
-          'Pune - Pune Junction',
-          'Delhi - Majnu Ka Tila'
-        ]
-      },
-      {
-        id: 'TRIP-102',
-        name: 'Spiti Valley Winter Expedition',
-        travelMode: 'Train / Flight',
-        startDate: '2026-11-28',
-        duration: '7 Days / 6 Nights',
-        basePricePerPax: 21500,
-        pickupLocations: [
-          'Mumbai - Bandra Terminus / Airport',
-          'Pune - Pune Junction / Airport',
-          'Chandigarh Railway Station'
-        ]
-      },
-      {
-        id: 'TRIP-103',
-        name: 'Udaipur Kumbhalgarh Royal Heritage',
-        travelMode: 'Road / Bus',
-        startDate: '2026-12-05',
-        duration: '4 Days / 3 Nights',
-        basePricePerPax: 11800,
-        pickupLocations: [
-          'Mumbai - Borivali National Park',
-          'Mumbai - Andheri (WEH Metro)',
-          'Mumbai - Vashi Plaza',
-          'Thane - Teen Hath Naka',
-          'Pune - Wakad Chowk',
-          'Pune - Navale Bridge'
-        ]
-      },
-      {
-        id: 'TRIP-104',
-        name: 'Manali Kasol Winter Wonderland (Jan Batch)',
-        travelMode: 'Train / Railway',
-        startDate: '2027-01-10',
-        duration: '6 Days / 5 Nights',
-        basePricePerPax: 25000,
-        pickupLocations: [
-          'Mumbai - Borivali / Bandra Terminus',
-          'Mumbai - Kalyan Junction',
-          'Pune - Wakad Chowk',
-          'Pune - Navale Bridge'
-        ]
-      }
-    ];
-
-    let availableTrips = [...DEFAULT_TRIPS];
-    let travelers = [{ name: '', dob: '', age: 24 }];
-    let currentSubmittedBookingId = null;
-
     function calcAgeFromDob(dobStr) {
-      if (!dobStr) return 24;
+      if (!dobStr) return '';
       const dob = new Date(dobStr + 'T00:00:00');
-      if (isNaN(dob.getTime())) return 24;
+      if (isNaN(dob.getTime())) return '';
       const now = new Date();
       let age = now.getFullYear() - dob.getFullYear();
       const m = now.getMonth() - dob.getMonth();
@@ -250,123 +463,209 @@
       return Math.max(1, Math.min(99, age));
     }
 
-    function subtractDays(dateStr, days) {
-      const d = new Date(dateStr + 'T00:00:00');
-      if (isNaN(d.getTime())) return '2026-12-15';
-      d.setDate(d.getDate() - days);
-      return d.toISOString().slice(0, 10);
-    }
+    function updateTravelModeVisibilityForTrip(trip) {
+      const wrap = document.getElementById('custTravelModeWrapper');
+      const modeSel = document.getElementById('custTravelModeSelect');
+      const trainBox = document.getElementById('custTrainClassBox');
+      const flightBox = document.getElementById('custFlightDetailsBox');
+      if (!wrap || !modeSel) return;
 
-    function renderTripsDropdown(selectedId) {
-      const sel = document.getElementById('custTripSelect');
-      sel.innerHTML = availableTrips.map(t =>
-        `<option value="${t.id}">${t.name} (Departure: ${t.startDate})</option>`
-      ).join('');
-      if (selectedId && availableTrips.some(t => t.id === selectedId)) {
-        sel.value = selectedId;
+      const tMode = trip?.transportMode || 'TRAIN_FLIGHT';
+      if (tMode === 'BUS_ONLY') {
+        wrap.classList.add('hidden');
+        return;
       }
-      updateTripMetaAndPickups();
-    }
+      wrap.classList.remove('hidden');
 
-    function updateTripMetaAndPickups(savedBoardingVal) {
-      const sel = document.getElementById('custTripSelect');
-      const trip = availableTrips.find(t => t.id === sel.value) || availableTrips[0];
-      document.getElementById('custTripMeta').textContent = `📅 Departure: ${trip.startDate} (${trip.duration}) • Mode: ${trip.travelMode || 'Road / Train'}`;
-
-      const pickSel = document.getElementById('custPickupSelect');
-      const customInp = document.getElementById('custBoardingInput');
-      const stops = (trip.pickupLocations && trip.pickupLocations.length > 0)
-        ? trip.pickupLocations
-        : ['Mumbai - Borivali National Park', 'Mumbai - Andheri', 'Mumbai - Vashi Plaza', 'Pune - Wakad Chowk', 'Pune - Navale Bridge'];
-
-      pickSel.innerHTML = `<option value="">-- Choose Pickup Location --</option>` +
-        stops.map(s => `<option value="${s}">${s}</option>`).join('') +
-        `<option value="__CUSTOM__">+ Other / Custom Pickup Location (Type Below)</option>`;
-
-      if (savedBoardingVal) {
-        if (stops.includes(savedBoardingVal)) {
-          pickSel.value = savedBoardingVal;
-          customInp.classList.add('hidden');
-          customInp.value = savedBoardingVal;
-        } else {
-          pickSel.value = '__CUSTOM__';
-          customInp.classList.remove('hidden');
-          customInp.value = savedBoardingVal;
-        }
+      if (tMode === 'TRAIN_ONLY') {
+        modeSel.innerHTML = `<option value="TRAIN">🚆 Train</option>`;
+        modeSel.value = 'TRAIN';
+      } else if (tMode === 'FLIGHT_ONLY') {
+        modeSel.innerHTML = `<option value="FLIGHT">✈️ Flight (Reach Tour Starting Place Directly)</option>`;
+        modeSel.value = 'FLIGHT';
       } else {
-        pickSel.value = '';
-        customInp.classList.add('hidden');
-        customInp.value = '';
+        const cur = modeSel.value || 'TRAIN';
+        modeSel.innerHTML = `
+          <option value="TRAIN">🚆 Train</option>
+          <option value="FLIGHT">✈️ Flight (Reach Tour Starting Place Directly)</option>
+        `;
+        if (cur === 'TRAIN' || cur === 'FLIGHT') modeSel.value = cur;
       }
+
+      const isFlight = modeSel.value === 'FLIGHT';
+      trainBox.classList.toggle('hidden', isFlight);
+      flightBox.classList.toggle('hidden', !isFlight);
+    }
+
+    function renderTripNameAndDateSelectors(preselectedTripId) {
+      const nameSel = document.getElementById('custTripNameSelect');
+      const uniqueNames = [...new Set(availableTrips.map(t => t.name))];
+      nameSel.innerHTML = uniqueNames.map(n => `<option value="${n}">${n}</option>`).join('');
+
+      if (preselectedTripId) {
+        const match = availableTrips.find(t => t.id === preselectedTripId || t.name.toLowerCase() === preselectedTripId.toLowerCase());
+        if (match) {
+          nameSel.value = match.name;
+        }
+      }
+      renderDatesForSelectedTrip(preselectedTripId);
+    }
+
+    function renderDatesForSelectedTrip(preselectedTripId) {
+      const selectedName = document.getElementById('custTripNameSelect').value;
+      const batches = availableTrips.filter(t => t.name === selectedName);
+      const dateSel = document.getElementById('custTripDateSelect');
+      dateSel.innerHTML = batches.map(t =>
+        `<option value="${t.id}">${t.startDate} (${t.duration || 'Batch'})</option>`
+      ).join('');
+      if (preselectedTripId && batches.some(t => t.id === preselectedTripId)) {
+        dateSel.value = preselectedTripId;
+      }
+      const trip = availableTrips.find(t => t.id === dateSel.value) || batches[0] || availableTrips[0];
+      const transportLabel = trip.transportMode === 'BUS_ONLY' ? 'Bus Only' : trip.transportMode === 'TRAIN_ONLY' ? 'Train' : trip.transportMode === 'FLIGHT_ONLY' ? 'Flight' : 'Train / Flight';
+      document.getElementById('custTripMeta').textContent = `📅 Departure: ${trip.startDate} (${trip.duration || ''}) • Transport: ${transportLabel}`;
+      updateTravelModeVisibilityForTrip(trip);
     }
 
     function renderTravelerRows() {
       const paxCount = Math.max(1, Math.min(20, parseInt(document.getElementById('custPaxInput').value, 10) || 1));
       while (travelers.length < paxCount) {
-        travelers.push({ name: '', dob: '', age: 24 });
+        travelers.push({ name: '', age: '', gender: '', dob: '', differentCity: false, city: '', seatNo: '' });
       }
-      if (travelers.length > paxCount) {
-        travelers = travelers.slice(0, paxCount);
-      }
+      if (travelers.length > paxCount) travelers = travelers.slice(0, paxCount);
 
+      const bookingCity = (document.getElementById('custBookingCityInput')?.value || '').trim();
       const container = document.getElementById('custTravelersList');
       container.innerHTML = travelers.map((t, idx) => `
-        <div class="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded-xl border border-indigo-100">
-          <div class="col-span-12 sm:col-span-2 text-[11px] font-extrabold text-indigo-900">
-            ${idx === 0 ? '1. Booker *' : `#${idx + 1} Traveler`}
+        <div class="bg-white p-2.5 rounded-xl border border-indigo-100 space-y-2">
+          <div class="grid grid-cols-12 gap-1.5 items-center">
+            <div class="col-span-12 sm:col-span-4">
+              <input type="text" data-idx="${idx}" data-field="name" value="${t.name || ''}" placeholder="#${idx + 1} Full Name *" class="tr-inp w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-bold text-slate-900" />
+            </div>
+            <div class="col-span-3 sm:col-span-2">
+              <input type="number" min="1" max="99" data-idx="${idx}" data-field="age" value="${t.age !== '' && t.age !== undefined ? t.age : ''}" placeholder="Age *" class="tr-inp w-full rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-extrabold text-center text-slate-900" />
+            </div>
+            <div class="col-span-4 sm:col-span-3">
+              <select data-idx="${idx}" data-field="gender" class="tr-inp w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs font-extrabold text-slate-800">
+                <option value="" ${!t.gender ? 'selected' : ''}>Gender *</option>
+                <option value="Male" ${t.gender === 'Male' ? 'selected' : ''}>Male</option>
+                <option value="Female" ${t.gender === 'Female' ? 'selected' : ''}>Female</option>
+              </select>
+            </div>
+            <div class="col-span-5 sm:col-span-3">
+              <input type="date" data-idx="${idx}" data-field="dob" value="${t.dob || ''}" title="Date of Birth" class="tr-inp w-full rounded-lg border border-indigo-300 bg-indigo-50/30 px-1.5 py-1.5 text-xs font-extrabold text-indigo-900" />
+            </div>
           </div>
-          <div class="col-span-7 sm:col-span-6">
-            <input type="text" data-idx="${idx}" data-field="name" value="${t.name || ''}" required placeholder="Enter Full Name" class="tr-inp w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-bold text-slate-900" />
-          </div>
-          <div class="col-span-5 sm:col-span-4">
-            <input type="date" data-idx="${idx}" data-field="dob" value="${t.dob || ''}" required title="Select Birthdate" class="tr-inp w-full rounded-lg border border-indigo-300 bg-indigo-50/30 px-2 py-1.5 text-xs font-extrabold text-indigo-900" />
+          <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 text-[11px]">
+            <label class="inline-flex items-center gap-1.5 font-bold text-slate-600 cursor-pointer">
+              <input type="checkbox" data-idx="${idx}" data-field="differentCity" ${t.differentCity ? 'checked' : ''} class="tr-city-toggle rounded border-slate-300 text-indigo-600" />
+              <span>Different city for Traveller #${idx + 1}?</span>
+            </label>
+            ${t.differentCity
+              ? `<input type="text" data-idx="${idx}" data-field="city" value="${t.city || ''}" placeholder="Enter Traveller #${idx + 1}'s City *" class="tr-inp rounded-lg border border-indigo-300 bg-indigo-50/40 px-2.5 py-1 text-xs font-extrabold text-indigo-950 w-48" />`
+              : `<span class="text-slate-400 font-semibold">City: ${bookingCity || 'Inherits Booking City'}</span>`}
           </div>
         </div>
       `).join('');
 
       container.querySelectorAll('.tr-inp').forEach(inp => {
-        inp.addEventListener('input', () => {
+        const evt = inp.tagName === 'SELECT' ? 'change' : 'input';
+        inp.addEventListener(evt, () => {
           const i = parseInt(inp.getAttribute('data-idx'), 10);
           const f = inp.getAttribute('data-field');
           if (!travelers[i]) return;
           if (f === 'name') travelers[i].name = inp.value;
+          if (f === 'age') travelers[i].age = inp.value ? parseInt(inp.value, 10) : '';
+          if (f === 'gender') travelers[i].gender = inp.value;
+          if (f === 'city') travelers[i].city = inp.value;
           if (f === 'dob') {
             travelers[i].dob = inp.value;
-            travelers[i].age = calcAgeFromDob(inp.value);
+            const computedAge = calcAgeFromDob(inp.value);
+            if (computedAge !== '') travelers[i].age = computedAge;
+            renderTravelerRows();
           }
+        });
+      });
+
+      container.querySelectorAll('.tr-city-toggle').forEach(chk => {
+        chk.addEventListener('change', () => {
+          const i = parseInt(chk.getAttribute('data-idx'), 10);
+          if (!travelers[i]) return;
+          travelers[i].differentCity = chk.checked;
+          if (!chk.checked) travelers[i].city = '';
+          renderTravelerRows();
         });
       });
     }
 
-    async function loadTripsFromFirebase() {
+    async function loadTripsFromCloud() {
       const params = new URLSearchParams(window.location.search);
       const preselectedTrip = params.get('trip');
       const sb = getCustomerSupabase();
       if (sb) {
         try {
           const { data } = await sb.from('tripflow_state').select('*').eq('company_id', WORKSPACE_ID).maybeSingle();
-          if (data?.payload?.trips?.length) {
-            availableTrips = data.payload.trips;
-          }
-          renderTripsDropdown(preselectedTrip);
-          return;
+          if (data?.payload?.trips?.length) availableTrips = data.payload.trips;
+        } catch (e) {}
+      } else {
+        try {
+          const endpoint = [FIREBASE_DB_URL, "tripflow_workspaces", WORKSPACE_ID + ".json"].join("/");
+          const res = await fetch(endpoint);
+          const data = await res.json();
+          if (data?.payload?.trips?.length) availableTrips = data.payload.trips;
         } catch (e) {}
       }
-      try {
-        const endpoint = [FIREBASE_DB_URL, "tripflow_workspaces", WORKSPACE_ID + ".json"].join("/");
-        const res = await fetch(endpoint);
-        const data = await res.json();
-        if (data?.payload?.trips?.length) {
-          availableTrips = data.payload.trips;
-        }
-      } catch (e) {}
-      renderTripsDropdown(preselectedTrip);
+      renderTripNameAndDateSelectors(preselectedTrip);
     }
 
-    async function saveOrUpdateBookingInFirebase(bookingObj, isUpdate) {
+    async function saveRecordToCloud(isDraft) {
+      const statusBox = document.getElementById('custFormStatusBox');
+      statusBox.classList.add('hidden');
+
+      const tripId = document.getElementById('custTripDateSelect').value || availableTrips[0].id;
+      const trip = availableTrips.find(t => t.id === tripId) || availableTrips[0];
+      const paxCount = Math.max(1, parseInt(document.getElementById('custPaxInput').value, 10) || 1);
+      const bookingCity = (document.getElementById('custBookingCityInput').value || '').trim();
+      const phone = (document.getElementById('custPhoneInput').value || '').trim();
+      const email = (document.getElementById('custEmailInput').value || '').trim();
+      const sharingType = document.getElementById('custSharingSelect').value;
+
+      const isBusOnly = trip.transportMode === 'BUS_ONLY';
+      const travelMode = isBusOnly ? 'BUS' : document.getElementById('custTravelModeSelect').value;
+      const trainClass = (!isBusOnly && travelMode === 'TRAIN') ? document.getElementById('custTrainClassSelect').value : '';
+      const flightDetails = (!isBusOnly && travelMode === 'FLIGHT') ? {
+        flightNumber: (document.getElementById('custFlightNoInput').value || '').trim(),
+        airport: (document.getElementById('custFlightAirportInput').value || '').trim(),
+        arrivalTime: (document.getElementById('custFlightTimeInput').value || '').trim(),
+        airportPickup: document.getElementById('custAirportPickupSelect').value
+      } : null;
+
+      const advancePaid = Math.max(0, Number(document.getElementById('custAdvanceInput').value) || 0);
+      const paymentMode = document.getElementById('custPayModeSelect').value;
+
+      const cleanPassengers = travelers.slice(0, paxCount).map((p) => ({
+        name: (p.name || '').trim(),
+        age: p.age !== '' && p.age !== undefined ? Number(p.age) : (p.dob ? calcAgeFromDob(p.dob) : ''),
+        gender: p.gender || '',
+        dob: (p.dob || '').trim(),
+        differentCity: Boolean(p.differentCity),
+        city: p.differentCity ? (p.city || '').trim() : bookingCity,
+        seatNo: p.seatNo || ''
+      }));
+
+      if (!isDraft) {
+        if (!cleanPassengers[0].name || !phone || phone.replace(/\D/g, '').length < 10 || !bookingCity) {
+          statusBox.textContent = 'Please fill in Traveller #1 Name, Booking City, and a valid 10-digit Phone Number.';
+          statusBox.className = 'bg-rose-50 border border-rose-200 text-rose-700 rounded-xl p-3 text-xs font-bold';
+          statusBox.classList.remove('hidden');
+          return;
+        }
+      }
+
       const sb = getCustomerSupabase();
-      const endpoint = [FIREBASE_DB_URL, "tripflow_workspaces", WORKSPACE_ID + ".json"].join("/");
-      let currentPayload = { trips: availableTrips, bookings: [], reminders: [], leads: [], auditLogs: [] };
+      const fbEndpoint = [FIREBASE_DB_URL, "tripflow_workspaces", WORKSPACE_ID + ".json"].join("/");
+      let currentPayload = { trips: availableTrips, bookings: [], followUps: [], reminders: [], leads: [], customersDb: [], auditLogs: [] };
+
       if (sb) {
         try {
           const { data } = await sb.from('tripflow_state').select('*').eq('company_id', WORKSPACE_ID).maybeSingle();
@@ -374,91 +673,169 @@
         } catch (e) {}
       } else {
         try {
-          const res = await fetch(endpoint);
+          const res = await fetch(fbEndpoint);
           const data = await res.json();
           if (data?.payload) currentPayload = data.payload;
         } catch (e) {}
       }
 
       if (!Array.isArray(currentPayload.bookings)) currentPayload.bookings = [];
-      if (!Array.isArray(currentPayload.reminders)) currentPayload.reminders = [];
-      if (!Array.isArray(currentPayload.auditLogs)) currentPayload.auditLogs = [];
+      if (!Array.isArray(currentPayload.leads)) currentPayload.leads = [];
+      if (!Array.isArray(currentPayload.customersDb)) currentPayload.customersDb = [];
 
-      if (isUpdate) {
-        const idx = currentPayload.bookings.findIndex(b => b.id === bookingObj.id);
-        if (idx !== -1) {
-          bookingObj.baseRatePerPax = currentPayload.bookings[idx].baseRatePerPax || bookingObj.baseRatePerPax;
-          bookingObj.discountTotal = currentPayload.bookings[idx].discountTotal || 0;
-          bookingObj.roomNumber = currentPayload.bookings[idx].roomNumber || bookingObj.roomNumber;
-          currentPayload.bookings[idx] = bookingObj;
-        } else {
-          currentPayload.bookings.unshift(bookingObj);
-        }
+      const createdDate = new Date().toISOString().slice(0, 10);
+
+      if (isDraft) {
+        const draftId = currentSubmittedId && currentSubmittedId.startsWith('LD-') ? currentSubmittedId : ('LD-' + (300 + currentPayload.leads.length + 1));
+        const leadObj = {
+          id: draftId,
+          tripId: trip.id,
+          clientName: cleanPassengers[0].name || 'Customer Draft',
+          phone: phone || 'Pending',
+          city: bookingCity,
+          pax: paxCount,
+          stage: 'Lead / Draft (Customer Form)',
+          lastChat: `Draft saved • City: ${bookingCity || 'TBD'} • Sharing: ${sharingType}`
+        };
+        const exIdx = currentPayload.leads.findIndex(l => l.id === draftId);
+        if (exIdx !== -1) currentPayload.leads[exIdx] = leadObj;
+        else currentPayload.leads.unshift(leadObj);
+        currentSubmittedId = draftId;
       } else {
-        currentPayload.bookings.unshift(bookingObj);
-        bookingObj.passengers.forEach(p => {
-          if (p.dob) {
-            currentPayload.reminders.unshift({
-              id: 'REM-' + Date.now() + '-' + Math.floor(Math.random() * 100),
-              type: 'CRM_FOLLOWUP',
-              tripId: bookingObj.tripId,
-              bookingId: bookingObj.id,
-              title: `🎂 Send Birthday Coupon (MDABDAY1000) to ${p.name} (DOB: ${p.dob})`,
-              dueDate: '2026-' + p.dob.slice(5),
-              phone: bookingObj.phone,
-              completed: false,
-              completedBy: null,
-              notes: `Submitted via Customer Portal. DOB: ${p.dob}`
+        // REQUIREMENT #0 & #1: NO AUTO COSTING! Goes into Admin as "New Submission / Pending" (status = PENDING_COSTING)
+        const bookingId = currentSubmittedId && currentSubmittedId.startsWith('BK-') ? currentSubmittedId : ('BK-' + (2050 + currentPayload.bookings.length + 1));
+        const bookingObj = {
+          id: bookingId,
+          tripId: trip.id,
+          batchDate: trip.startDate,
+          status: 'PENDING_COSTING',
+          customerName: cleanPassengers[0].name,
+          phone,
+          email,
+          bookingCity,
+          pax: paxCount,
+          sharingType,
+          roomNumber: '',
+          travelMode,
+          trainClass,
+          flightDetails,
+          passengers: cleanPassengers,
+          baseRatePerPax: 0,
+          discountTotal: 0,
+          manualTotal: 0,
+          isGstBooking: false,
+          gstRate: 5,
+          gstAmountType: 'EXCLUSIVE',
+          gstSupplyType: 'INTRA',
+          customerGstin: '',
+          gstInvoiceNo: 'INV-' + bookingId.replace('BK-', ''),
+          advancePaid,
+          paymentMode,
+          balanceStatus: 'PENDING',
+          createdAt: createdDate,
+          installments: advancePaid > 0 ? [{ amount: advancePaid, date: createdDate, month: createdDate.slice(0, 7), mode: paymentMode, label: 'Advance' }] : []
+        };
+        const exIdx = currentPayload.bookings.findIndex(b => b.id === bookingId);
+        if (exIdx !== -1) currentPayload.bookings[exIdx] = bookingObj;
+        else currentPayload.bookings.unshift(bookingObj);
+        currentSubmittedId = bookingId;
+
+        // REQUIREMENT #9: Sync each traveller into permanent Customers Database (matched by phone + name)
+        cleanPassengers.forEach((p, idx) => {
+          if (!p.name) return;
+          const pCity = p.differentCity && p.city ? p.city : bookingCity;
+          const phoneNote = idx === 0 ? '' : 'via booking contact';
+          const existingCust = currentPayload.customersDb.find(c =>
+            c.name.toLowerCase() === p.name.toLowerCase() && c.phone === phone
+          );
+          if (existingCust) {
+            if (p.gender) existingCust.gender = p.gender;
+            if (p.dob) existingCust.dob = p.dob;
+            if (pCity) existingCust.city = pCity;
+            if (email && idx === 0) existingCust.email = email;
+            existingCust.phoneNote = existingCust.phoneNote || phoneNote;
+            if (!Array.isArray(existingCust.pastTrips)) existingCust.pastTrips = [];
+            if (!existingCust.pastTrips.includes(trip.name)) existingCust.pastTrips.push(trip.name);
+          } else {
+            currentPayload.customersDb.push({
+              id: 'CUST-' + Date.now() + '-' + Math.floor(Math.random() * 1000) + '-' + idx,
+              name: p.name,
+              phone,
+              phoneNote,
+              email: idx === 0 ? email : '',
+              city: pCity,
+              gender: p.gender || '',
+              dob: p.dob || '',
+              pastTrips: [trip.name]
             });
           }
         });
       }
 
-      currentPayload.auditLogs.unshift({
-        id: 'LOG-' + Date.now(),
-        timestamp: new Date().toLocaleString(),
-        userName: bookingObj.customerName + ' (Customer Portal)',
-        role: 'CUSTOMER',
-        action: `${isUpdate ? 'Updated' : 'Submitted'} registration ${bookingObj.id} (${bookingObj.pax} Pax)`
-      });
-
       if (sb) {
-        await sb.from('tripflow_state').upsert({
-          company_id: WORKSPACE_ID,
-          payload: currentPayload,
-          updated_by: bookingObj.customerName + ' (Customer Portal)',
-          updated_at: new Date().toISOString()
-        });
-      } else {
-        await fetch(endpoint, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        try {
+          await sb.from('tripflow_state').upsert({
+            company_id: WORKSPACE_ID,
             payload: currentPayload,
-            updated_by: bookingObj.customerName + ' (Customer Portal)',
+            updated_by: 'Customer Public Form',
             updated_at: new Date().toISOString()
-          })
-        });
+          });
+        } catch (e) {}
+      } else {
+        try {
+          await fetch(fbEndpoint, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ payload: currentPayload, updated_by: 'Customer Public Form', updated_at: new Date().toISOString() })
+          });
+        } catch (e) {}
       }
+
+      if (isDraft) {
+        statusBox.textContent = `✅ Draft Saved (${currentSubmittedId})!`;
+        statusBox.className = 'bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl p-3 text-xs font-bold';
+        statusBox.classList.remove('hidden');
+        return;
+      }
+
+      document.getElementById('customerRegForm').classList.add('hidden');
+      document.getElementById('custThankYouView').classList.remove('hidden');
+      document.getElementById('tyStatusBadge').textContent = `New Submission / Pending (${currentSubmittedId})`;
+      document.getElementById('tyDetailsCard').innerHTML = `
+        <div><strong>Trip:</strong> ${trip.name} (Departure: ${trip.startDate})</div>
+        <div><strong>Booking City:</strong> ${bookingCity} • <strong>Sharing:</strong> ${sharingType}</div>
+        ${!isBusOnly ? `<div><strong>Travel Mode:</strong> ${travelMode === 'FLIGHT' ? `Flight (${flightDetails?.flightNumber || 'Direct'} • Airport: ${flightDetails?.airport || 'TBD'} • Pick-Up: ${flightDetails?.airportPickup})` : `Train (${trainClass})`}</div>` : ''}
+        <div><strong>Travellers (${paxCount}):</strong> ${cleanPassengers.map((p, i) => `${i + 1}. ${p.name} (${p.gender || '—'}, Age ${p.age || '—'}${p.differentCity && p.city ? ', City: ' + p.city : ''})`).join('; ')}</div>
+        <div><strong>Phone:</strong> ${phone} • <strong>Advance Paid:</strong> ₹${advancePaid.toLocaleString('en-IN')}</div>
+        <div class="text-amber-800 font-bold pt-1">Status: New Submission / Pending Admin Confirmation</div>
+      `;
     }
 
     document.addEventListener('DOMContentLoaded', () => {
       const params = new URLSearchParams(window.location.search);
-      renderTripsDropdown(params.get('trip'));
+      // Show preview bar only when ?preview=1 or inside local sandbox iframe without ?trip / ?form / ?inv
+      if (params.get('preview') === '1' || (!params.get('trip') && !params.get('form') && !params.get('inv') && window.self !== window.top)) {
+        document.getElementById('customerJourneyPreviewNav')?.classList.remove('hidden');
+      }
+      const invCode = params.get('inv');
+      if (invCode) {
+        document.getElementById('customerJourneyPreviewNav')?.classList.add('hidden');
+        switchCustomerPreviewTab('INV');
+      }
+      renderTripNameAndDateSelectors(params.get('form') || params.get('trip'));
       renderTravelerRows();
-      loadTripsFromFirebase();
+      loadTripsFromCloud();
 
-      document.getElementById('custTripSelect').addEventListener('change', () => updateTripMetaAndPickups());
-      document.getElementById('custPickupSelect').addEventListener('change', (e) => {
-        const customInp = document.getElementById('custBoardingInput');
-        if (e.target.value === '__CUSTOM__') {
-          customInp.classList.remove('hidden');
-          customInp.value = '';
-          customInp.focus();
-        } else {
-          customInp.classList.add('hidden');
-          customInp.value = e.target.value;
-        }
+      document.getElementById('custTripNameSelect').addEventListener('change', () => renderDatesForSelectedTrip());
+      document.getElementById('custTripDateSelect').addEventListener('change', () => {
+        const trip = availableTrips.find(t => t.id === document.getElementById('custTripDateSelect').value) || availableTrips[0];
+        updateTravelModeVisibilityForTrip(trip);
+      });
+      document.getElementById('custBookingCityInput').addEventListener('input', () => renderTravelerRows());
+      document.getElementById('custTravelModeSelect').addEventListener('change', (e) => {
+        const isFlight = e.target.value === 'FLIGHT';
+        document.getElementById('custTrainClassBox').classList.toggle('hidden', isFlight);
+        document.getElementById('custFlightDetailsBox').classList.toggle('hidden', !isFlight);
       });
 
       document.getElementById('custPaxInput').addEventListener('input', renderTravelerRows);
@@ -468,130 +845,28 @@
         renderTravelerRows();
       });
 
-      document.getElementById('customerRegForm').addEventListener('submit', async (e) => {
+      document.getElementById('custSaveDraftBtn').addEventListener('click', () => saveRecordToCloud(true));
+      document.getElementById('customerRegForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        const errBox = document.getElementById('custFormErrorBox');
-        errBox.classList.add('hidden');
-
-        const tripId = document.getElementById('custTripSelect').value;
-        const trip = availableTrips.find(t => t.id === tripId) || availableTrips[0];
-        const paxCount = Math.max(1, parseInt(document.getElementById('custPaxInput').value, 10) || 1);
-        const cleanPassengers = travelers.slice(0, paxCount).map((p) => ({
-          name: (p.name || '').trim(),
-          dob: (p.dob || '').trim(),
-          age: calcAgeFromDob(p.dob)
-        }));
-
-        if (!cleanPassengers[0].name) {
-          errBox.textContent = 'Please enter the Primary Booker Full Name in Row #1.';
-          errBox.classList.remove('hidden');
-          return;
-        }
-
-        const pickSelVal = document.getElementById('custPickupSelect').value;
-        const boardingPoint = pickSelVal === '__CUSTOM__'
-          ? document.getElementById('custBoardingInput').value.trim()
-          : pickSelVal;
-
-        if (!boardingPoint) {
-          errBox.textContent = 'Please select or enter your Pickup Location / Boarding Point.';
-          errBox.classList.remove('hidden');
-          return;
-        }
-
-        const isUpdate = Boolean(currentSubmittedBookingId);
-        const bookingId = currentSubmittedBookingId || ('BK-' + (2050 + Math.floor(Math.random() * 899)));
-        const sharingType = document.getElementById('custSharingSelect').value;
-        const foodPref = document.getElementById('custFoodSelect').value;
-        const phone = document.getElementById('custPhoneInput').value.trim();
-        const email = document.getElementById('custEmailInput').value.trim();
-        const advancePaid = Math.max(0, Number(document.getElementById('custAdvanceInput').value) || 0);
-        const paymentMode = document.getElementById('custPayModeSelect').value;
-        const createdDate = new Date().toISOString().slice(0, 10);
-
-        const bookingObj = {
-          id: bookingId,
-          tripId: trip.id,
-          customerName: cleanPassengers[0].name,
-          phone,
-          email,
-          foodPref,
-          boardingPoint,
-          pax: paxCount,
-          sharingType,
-          roomNumber: 'Room TBD',
-          passengers: cleanPassengers,
-          baseRatePerPax: trip.basePricePerPax || 7500,
-          discountTotal: 0,
-          advancePaid,
-          paymentMode,
-          createdAt: createdDate,
-          balanceDueDate: subtractDays(trip.startDate, 10),
-          installments: [
-            { amount: advancePaid, date: createdDate, month: createdDate.slice(0, 7), mode: paymentMode, label: 'Customer Portal Advance' }
-          ],
-          createdBy: 'Customer Self-Fill Portal',
-          kycDone: false,
-          packingBriefed: false,
-          pickupConfirmed: true
-        };
-
-        const btn = document.getElementById('custSubmitBtn');
-        btn.disabled = true;
-        btn.textContent = 'Saving your registration...';
-
-        try {
-          await saveOrUpdateBookingInFirebase(bookingObj, isUpdate);
-        } catch (err) {}
-
-        currentSubmittedBookingId = bookingId;
-        btn.disabled = false;
-        btn.textContent = '💾 Save Updated Details';
-
-        document.getElementById('customerRegForm').classList.add('hidden');
-        const tyView = document.getElementById('custThankYouView');
-        tyView.classList.remove('hidden');
-        document.getElementById('tyStatusBadge').textContent = isUpdate ? '✓ Details Updated Successfully' : '✓ Registration Submitted';
-
-        const paxSummaryHtml = cleanPassengers.map((p, i) =>
-          `<div>${i + 1}. <strong>${p.name}</strong> ${p.dob ? `(🎂 DOB: ${p.dob})` : ''}</div>`
-        ).join('');
-
-        document.getElementById('tyDetailsCard').innerHTML = `
-          <div class="flex items-center justify-between border-b border-slate-200 pb-2">
-            <span class="font-extrabold text-slate-900">Booking Reference: ${bookingId}</span>
-            <span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-bold text-[10px]">${paxCount} Pax</span>
-          </div>
-          <div><strong>Trip Batch:</strong> ${trip.name} (Departure: ${trip.startDate})</div>
-          <div><strong>Room Sharing & Meal:</strong> ${sharingType} • ${foodPref}</div>
-          <div><strong>Pickup Location:</strong> ${boardingPoint}</div>
-          <div><strong>Mobile & Email:</strong> ${phone} ${email ? `• ${email}` : ''}</div>
-          <div><strong>Advance Paid:</strong> ₹${advancePaid.toLocaleString('en-IN')} (${paymentMode})</div>
-          <div class="pt-1 border-t border-slate-200">
-            <div class="font-bold text-slate-700 mb-1">Registered Travelers:</div>
-            <div class="space-y-0.5 text-slate-600">${paxSummaryHtml}</div>
-          </div>
-        `;
+        saveRecordToCloud(false);
       });
 
       document.getElementById('editSubmittedDetailsBtn').addEventListener('click', () => {
         document.getElementById('custThankYouView').classList.add('hidden');
         document.getElementById('customerRegForm').classList.remove('hidden');
         document.getElementById('editingNoticeBanner').classList.remove('hidden');
-        document.getElementById('editingBookingIdLabel').textContent = currentSubmittedBookingId;
-        document.getElementById('custSubmitBtn').textContent = '💾 Update My Submitted Details';
+        document.getElementById('editingBookingIdLabel').textContent = currentSubmittedId;
       });
 
       document.getElementById('registerNewGroupBtn').addEventListener('click', () => {
-        currentSubmittedBookingId = null;
-        travelers = [{ name: '', dob: '', age: 24 }];
+        currentSubmittedId = null;
+        travelers = [{ name: '', age: '', gender: '', dob: '', differentCity: false, city: '', seatNo: '' }];
         document.getElementById('custPaxInput').value = '1';
-        updateTripMetaAndPickups('');
+        document.getElementById('custBookingCityInput').value = '';
         document.getElementById('custPhoneInput').value = '';
         document.getElementById('custEmailInput').value = '';
         document.getElementById('custAdvanceInput').value = '';
         document.getElementById('editingNoticeBanner').classList.add('hidden');
-        document.getElementById('custSubmitBtn').textContent = '✅ Submit Trip Registration';
         renderTravelerRows();
         document.getElementById('custThankYouView').classList.add('hidden');
         document.getElementById('customerRegForm').classList.remove('hidden');
